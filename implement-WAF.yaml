@@ -3,7 +3,7 @@ Resources:
 
 # ------ WEB ACL FOR CLOUDFRONT ( *must be deployed in us-east-1 Region )--------------------
 
-  CCECloudFrontWebACLipv4IPset:
+  CloudFrontWebACLipv4IPset:
     Type: AWS::WAFv2::IPSet
     Properties: 
       Description: known-bad-ipv4
@@ -15,14 +15,12 @@ Resources:
         - 52.167.144.72/32
         - 144.126.135.179/32
       Tags: 
-        - Key: customer
-          Value: vft
-        - Key: supplier
-          Value: vft
-        - Key: project
-          Value: research
+            - Key: user
+              Value: coderman
+            - Key: project
+              Value: research 
 
-  CCECloudFrontWebACLipv6IPset:
+  CloudFrontWebACLipv6IPset:
     Type: AWS::WAFv2::IPSet
     Properties: 
       Description: known-bad-ipv6
@@ -32,32 +30,27 @@ Resources:
         - 2600:3c04:0000:0000:f03c:93ff:fee6:c0b0/128
         - 2a01:7e01:0000:0000:f03c:93ff:fe0d:45d2/128
       Tags: 
-        - Key: customer
-          Value: vft
-        - Key: supplier
-          Value: vft
-        - Key: project
-          Value: research
+          - Key: user
+            Value: coderman
+          - Key: project
+            Value: research 
 
-
-  CCECloudFrontWebACL:
+  CloudFrontWebACL:
     Type: AWS::WAFv2::WebACL
     Properties:
       Scope: CLOUDFRONT
-      Description: Web ACL for CLOUDFRONT DISTRIBUTIONS.
+      Description: Web ACL for Cloudfront Distribution.
       DefaultAction: 
         Block: {}
       VisibilityConfig:
         SampledRequestsEnabled: true
         CloudWatchMetricsEnabled: true
         MetricName: CWMetricForCloudFrontWebACL
-      Tags:
-          - Key: customer
-            Value: vft
-          - Key: supplier
-            Value: vft
+      Tags: 
+          - Key: user
+            Value: coderman
           - Key: project
-            Value: research
+            Value: research 
 
       Rules: 
 
@@ -135,77 +128,3 @@ Resources:
               CountryCodes: 
                 - IN
 
-
-
-  # VFTRegionalWebACL:
-  #     Type: AWS::WAFv2::WebACL
-  #     Properties:
-  #       Scope: REGIONAL
-  #       Description:  REGIONAL Web ACL for VFT 
-  #       DefaultAction: 
-  #         Block: {}
-  #       VisibilityConfig:
-  #         SampledRequestsEnabled: true
-  #         CloudWatchMetricsEnabled: true
-  #         MetricName: CWMetricForVFTRegionalWebACL
-  #       Tags:
-  #           - Key: customer
-  #             Value: vft
-  #           - Key: supplier
-  #             Value: vft
-  #           - Key: project
-  #             Value: research
-  #       Rules: 
-
-  #         - Name: WebACL-RateBasedRule
-  #           Priority: 1
-  #           Action:
-  #             Block: {}
-  #           VisibilityConfig:
-  #             CloudWatchMetricsEnabled: true
-  #             MetricName: CWMetricForRegionalWebACLRateBasedRule
-  #             SampledRequestsEnabled: true
-  #           Statement:
-  #             RateBasedStatement:
-  #               AggregateKeyType: IP
-  #               Limit: 3000
-  #               ScopeDownStatement: 
-
-  #                 OrStatement:
-
-  #                   Statements:
-
-  #                     - NotStatement:
-  #                         Statement:
-  #                           SizeConstraintStatement:
-  #                             ComparisonOperator: GT 
-  #                             FieldToMatch: 
-  #                               SingleHeader: 
-  #                                 Name: x-amz-security-token
-  #                             Size: 150
-  #                             TextTransformations:
-  #                             - Priority: 0
-  #                               Type: NONE    
-
-  #                     - NotStatement:
-  #                         Statement:
-  #                           SizeConstraintStatement:
-  #                             ComparisonOperator: GT 
-  #                             FieldToMatch: 
-  #                               SingleHeader: 
-  #                                 Name: authorization
-  #                             Size: 150
-  #                             TextTransformations:
-  #                             - Priority: 0
-  #                               Type: NONE
-
-  #                     - NotStatement:
-  #                         Statement:
-  #                           ByteMatchStatement:
-  #                             FieldToMatch: 
-  #                               UriPath: {}
-  #                             PositionalConstraint: EXACTLY
-  #                             SearchString: "/graphql/"
-  #                             TextTransformations:
-  #                             - Priority: 0
-  #                               Type: NONE
