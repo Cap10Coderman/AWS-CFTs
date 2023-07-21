@@ -1,0 +1,211 @@
+Description: This template creates a Cloudfront WAF
+Resources:
+
+# ------ WEB ACL FOR CLOUDFRONT ( *must be deployed in us-east-1 Region )--------------------
+
+  CCECloudFrontWebACLipv4IPset:
+    Type: AWS::WAFv2::IPSet
+    Properties: 
+      Description: known-bad-ipv4
+      IPAddressVersion: IPV4
+      Scope: CLOUDFRONT
+      Addresses: 
+        - 172.67.129.198/32
+        - 66.249.77.71/32
+        - 52.167.144.72/32
+        - 144.126.135.179/32
+      Tags: 
+        - Key: customer
+          Value: vft
+        - Key: supplier
+          Value: vft
+        - Key: project
+          Value: research
+
+  CCECloudFrontWebACLipv6IPset:
+    Type: AWS::WAFv2::IPSet
+    Properties: 
+      Description: known-bad-ipv6
+      IPAddressVersion: IPV6
+      Scope: CLOUDFRONT
+      Addresses: 
+        - 2600:3c04:0000:0000:f03c:93ff:fee6:c0b0/128
+        - 2a01:7e01:0000:0000:f03c:93ff:fe0d:45d2/128
+      Tags: 
+        - Key: customer
+          Value: vft
+        - Key: supplier
+          Value: vft
+        - Key: project
+          Value: research
+
+
+  CCECloudFrontWebACL:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Scope: CLOUDFRONT
+      Description: Web ACL for CLOUDFRONT DISTRIBUTIONS.
+      DefaultAction: 
+        Block: {}
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: CWMetricForCloudFrontWebACL
+      Tags:
+          - Key: customer
+            Value: vft
+          - Key: supplier
+            Value: vft
+          - Key: project
+            Value: research
+
+      Rules: 
+
+        - Name: block-not-allowed-countries
+          Action:
+            Block: {}
+          Priority: 0
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: CWMetricForCloudFrontWebACLblock-not-allowed-countries
+            SampledRequestsEnabled: true
+          Statement:
+            NotStatement:
+              Statement: 
+                GeoMatchStatement:
+                  CountryCodes: 
+                    - IN
+
+        - Name: block-known-bad-ip
+          Action:
+            Block: {}
+          Priority: 1
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: CWMetricForCloudFrontWebACLblock-known-bad-ip
+            SampledRequestsEnabled: true
+          Statement:
+            OrStatement:
+              Statements:
+                - IPSetReferenceStatement:
+                    Arn: !GetAtt CCECloudFrontWebACLipv6IPset.Arn #ipv6 ipset
+                - IPSetReferenceStatement:
+                    Arn: !GetAtt CCECloudFrontWebACLipv4IPset.Arn #ipv4 ipset
+
+
+        - Name: AWS-AWSManagedRulesAmazonIpReputationList
+          Priority: 2
+          OverrideAction:
+            None: {}
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: CWMetricForCloudFrontIPReputationList
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesAmazonIpReputationList
+
+        - Name: block-flood-attack
+          Action:
+            Block: {}
+          Priority: 3
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: CWMetricForCloudFrontWebACLblock-flood-attack
+            SampledRequestsEnabled: true
+          Statement:
+            RateBasedStatement:
+              Limit: 100
+              AggregateKeyType: FORWARDED_IP
+              ForwardedIPConfig:
+                HeaderName: X-Forwarded-For
+                FallbackBehavior: MATCH
+
+        - Name: permit-allowed-country
+          Action:
+            Allow: {}
+          Priority: 4
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: CWMetricForCloudFrontWebACLpermit-allowed-country
+            SampledRequestsEnabled: true
+          Statement:
+            GeoMatchStatement:
+              CountryCodes: 
+                - IN
+
+
+
+  # VFTRegionalWebACL:
+  #     Type: AWS::WAFv2::WebACL
+  #     Properties:
+  #       Scope: REGIONAL
+  #       Description:  REGIONAL Web ACL for VFT 
+  #       DefaultAction: 
+  #         Block: {}
+  #       VisibilityConfig:
+  #         SampledRequestsEnabled: true
+  #         CloudWatchMetricsEnabled: true
+  #         MetricName: CWMetricForVFTRegionalWebACL
+  #       Tags:
+  #           - Key: customer
+  #             Value: vft
+  #           - Key: supplier
+  #             Value: vft
+  #           - Key: project
+  #             Value: research
+  #       Rules: 
+
+  #         - Name: WebACL-RateBasedRule
+  #           Priority: 1
+  #           Action:
+  #             Block: {}
+  #           VisibilityConfig:
+  #             CloudWatchMetricsEnabled: true
+  #             MetricName: CWMetricForRegionalWebACLRateBasedRule
+  #             SampledRequestsEnabled: true
+  #           Statement:
+  #             RateBasedStatement:
+  #               AggregateKeyType: IP
+  #               Limit: 3000
+  #               ScopeDownStatement: 
+
+  #                 OrStatement:
+
+  #                   Statements:
+
+  #                     - NotStatement:
+  #                         Statement:
+  #                           SizeConstraintStatement:
+  #                             ComparisonOperator: GT 
+  #                             FieldToMatch: 
+  #                               SingleHeader: 
+  #                                 Name: x-amz-security-token
+  #                             Size: 150
+  #                             TextTransformations:
+  #                             - Priority: 0
+  #                               Type: NONE    
+
+  #                     - NotStatement:
+  #                         Statement:
+  #                           SizeConstraintStatement:
+  #                             ComparisonOperator: GT 
+  #                             FieldToMatch: 
+  #                               SingleHeader: 
+  #                                 Name: authorization
+  #                             Size: 150
+  #                             TextTransformations:
+  #                             - Priority: 0
+  #                               Type: NONE
+
+  #                     - NotStatement:
+  #                         Statement:
+  #                           ByteMatchStatement:
+  #                             FieldToMatch: 
+  #                               UriPath: {}
+  #                             PositionalConstraint: EXACTLY
+  #                             SearchString: "/graphql/"
+  #                             TextTransformations:
+  #                             - Priority: 0
+  #                               Type: NONE
