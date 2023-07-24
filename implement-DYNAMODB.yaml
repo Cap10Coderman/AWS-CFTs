@@ -1,0 +1,251 @@
+Description: This template creates a Dynamo DB with provisioned autoscaling if EnvironmentTag is prod else on demand.
+
+Parameters:
+  EnvironmentTag:
+    Description: Environment Tag Value
+    Type: String
+    Default: dev # Specify the env
+    AllowedValues:
+    - dev
+    - uat
+    - prod
+
+  DynamoDBTableReadCapacityUnits:
+    Description: VersionTable ReadCapacityUnits
+    Type: String
+    Default: 1
+
+  DynamoDBTableWriteCapacityUnits:
+    Description: VersionTable WriteCapacityUnits
+    Type: String
+    Default: 1
+
+  AutoScalingMaxCapacity:
+    Description: AutoScaling MaxCapacity for Read and write
+    Type: String
+    Default: 10
+
+  TargetValueForAutoScaling:
+    Description: AutoScaling TargetValue for Read and write in percentage.
+    Type: String
+    Default: 70
+    
+
+Conditions:
+    isProd: !Equals [ !Ref EnvironmentTag, prod]
+
+Resources:
+
+  DynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: !If [ isProd,PROVISIONED,PAY_PER_REQUEST]
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true  # Recovery enabled
+      ProvisionedThroughput:
+        ReadCapacityUnits: !If [ isProd,!Ref DynamoDBTableReadCapacityUnits,0]
+        WriteCapacityUnits: !If [ isProd,!Ref DynamoDBTableWriteCapacityUnits,0]
+      Tags:
+        - Key: customer
+          Value: vft
+        - Key: supplier
+          Value: vft
+        - Key: project
+          Value: research  
+
+      AttributeDefinitions:
+        - AttributeName: "partitionKey"
+          AttributeType: "S"
+        - AttributeName: "sortKey"
+          AttributeType: "S"
+        - AttributeName: "sortKey1"
+          AttributeType: "S"
+        - AttributeName: "sortKey2"
+          AttributeType: "S"
+        - AttributeName: "sortKey3"
+          AttributeType: "S"
+        - AttributeName: "sortKey4"
+          AttributeType: "S"
+        - AttributeName: "sortKey5"
+          AttributeType: "S"
+        - AttributeName: "gsPartitionKey1"
+          AttributeType: "S"
+        - AttributeName: "gsSortKey1"
+          AttributeType: "S"
+
+      KeySchema:
+        - AttributeName: "partitionKey"
+          KeyType: "HASH"
+        - AttributeName: "sortKey"
+          KeyType: "RANGE"
+      LocalSecondaryIndexes:
+        - IndexName: sortKey1-index
+          KeySchema:
+            - AttributeName: "partitionKey"
+              KeyType: "HASH"
+            - AttributeName: "sortKey1"
+              KeyType: "RANGE"
+          Projection:
+            ProjectionType: "ALL"
+        - IndexName: sortKey2-index
+          KeySchema:
+            - AttributeName: "partitionKey"
+              KeyType: "HASH"
+            - AttributeName: "sortKey2"
+              KeyType: "RANGE"
+          Projection:
+            ProjectionType: "ALL"
+        - IndexName: sortKey3-index
+          KeySchema:
+            - AttributeName: "partitionKey"
+              KeyType: "HASH"
+            - AttributeName: "sortKey3"
+              KeyType: "RANGE"
+          Projection:
+            ProjectionType: "ALL"
+        - IndexName: sortKey4-index
+          KeySchema:
+            - AttributeName: "partitionKey"
+              KeyType: "HASH"
+            - AttributeName: "sortKey4"
+              KeyType: "RANGE"
+          Projection:
+            ProjectionType: "ALL"
+        - IndexName: sortKey5-index
+          KeySchema:
+            - AttributeName: "partitionKey"
+              KeyType: "HASH"
+            - AttributeName: "sortKey5"
+              KeyType: "RANGE"
+          Projection:
+            ProjectionType: "ALL"
+      SSESpecification:
+        SSEEnabled: false
+      GlobalSecondaryIndexes:
+        - IndexName: gs1-index
+          KeySchema:
+            -   AttributeName: gsPartitionKey1
+                KeyType: HASH
+            -   AttributeName: gsSortKey1
+                KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: !If [ isProd,!Ref DynamoDBTableReadCapacityUnits,0]
+            WriteCapacityUnits: !If [ isProd,!Ref DynamoDBTableWriteCapacityUnits,0]
+   
+
+# ---AUTO SCALING CONFIGURATION FOR DYNAMO DB ( * This part is only created if env is prod )
+
+
+#-- Scalable Target
+
+  DynamoDBTableReadScalableTarget:
+    Condition: isProd
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties: 
+      MaxCapacity: !Ref AutoScalingMaxCapacity
+      MinCapacity: !Ref DynamoDBTableReadCapacityUnits  
+      ResourceId: !Sub table/${DynamoDBTable}
+      ScalableDimension: dynamodb:table:ReadCapacityUnits
+      ServiceNamespace: dynamodb
+
+  DynamoDBTableWriteScalableTarget:
+    Condition: isProd
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties: 
+      MaxCapacity: !Ref AutoScalingMaxCapacity
+      MinCapacity: !Ref DynamoDBTableWriteCapacityUnits  
+      ResourceId: !Sub table/${DynamoDBTable}
+      ScalableDimension: dynamodb:table:WriteCapacityUnits
+      ServiceNamespace: dynamodb
+
+#-- Scaling Policy
+
+  DynamoDBTableReadScalingPolicy:
+    Condition: isProd
+    Type: "AWS::ApplicationAutoScaling::ScalingPolicy"
+    Properties: 
+      PolicyName: DBReadAutoScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref DynamoDBTableReadScalableTarget
+      TargetTrackingScalingPolicyConfiguration: 
+        TargetValue: !Ref TargetValueForAutoScaling
+        ScaleInCooldown: 70 #slow
+        ScaleOutCooldown: 60 #agressive
+        PredefinedMetricSpecification: 
+          PredefinedMetricType: DynamoDBReadCapacityUtilization
+
+  DynamoDBTableWriteScalingPolicy:
+    Condition: isProd
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties: 
+      PolicyName: DBWriteAutoScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref DynamoDBTableWriteScalableTarget
+      TargetTrackingScalingPolicyConfiguration: 
+        TargetValue: !Ref TargetValueForAutoScaling
+        ScaleInCooldown: 70 #slow
+        ScaleOutCooldown: 60 #agressive
+        PredefinedMetricSpecification: 
+          PredefinedMetricType: DynamoDBWriteCapacityUtilization
+
+#----GLOBAL SECONDARY INDEXES - AUTO SCALING-----------
+
+#-- Scalable Target
+
+  DynamoDBTableGlobalIndexReadScalableTarget:
+    Condition: isProd 
+    Type: "AWS::ApplicationAutoScaling::ScalableTarget"
+    Properties: 
+      MaxCapacity: !Ref AutoScalingMaxCapacity
+      MinCapacity: !Ref DynamoDBTableReadCapacityUnits 
+      ResourceId: !Sub table/${DynamoDBTable}/index/gs1-index
+      ScalableDimension: "dynamodb:index:ReadCapacityUnits"
+      ServiceNamespace: dynamodb
+
+  DynamoDBTableGlobalIndexWriteScalableTarget:
+    Condition: isProd
+    Type: "AWS::ApplicationAutoScaling::ScalableTarget"
+    Properties: 
+      MaxCapacity: !Ref AutoScalingMaxCapacity
+      MinCapacity: !Ref DynamoDBTableReadCapacityUnits 
+      ResourceId: !Sub table/${DynamoDBTable}/index/gs1-index
+      ScalableDimension: "dynamodb:index:WriteCapacityUnits"
+      ServiceNamespace: dynamodb
+
+#-- Scaling Policy
+
+  DynamoDBTableGlobalIndexReadScalingPolicy:
+    Condition: isProd
+    Type: "AWS::ApplicationAutoScaling::ScalingPolicy"
+    Properties: 
+      PolicyName: DBReadAutoScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref DynamoDBTableGlobalIndexReadScalableTarget
+      TargetTrackingScalingPolicyConfiguration: 
+        TargetValue: !Ref TargetValueForAutoScaling
+        ScaleInCooldown: 70 #slow
+        ScaleOutCooldown: 60 #agressive
+        PredefinedMetricSpecification: 
+          PredefinedMetricType: DynamoDBReadCapacityUtilization
+
+  DynamoDBTableGlobalIndexWriteScalingPolicy:
+    Condition: isProd
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties: 
+      PolicyName: DBWriteAutoScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref DynamoDBTableGlobalIndexWriteScalableTarget
+      TargetTrackingScalingPolicyConfiguration: 
+        TargetValue: !Ref TargetValueForAutoScaling
+        ScaleInCooldown: 70 #slow
+        ScaleOutCooldown: 60 #agressive
+        PredefinedMetricSpecification: 
+          PredefinedMetricType: DynamoDBWriteCapacityUtilization
+
+
+Outputs:
+  DynamoDBTableArn:
+    Description: ARN of the DynamoDB Table
+    Value: !GetAtt DynamoDBTable.Arn
