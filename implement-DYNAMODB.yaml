@@ -45,13 +45,11 @@ Resources:
       ProvisionedThroughput:
         ReadCapacityUnits: !If [ isProd,!Ref DynamoDBTableReadCapacityUnits,0]
         WriteCapacityUnits: !If [ isProd,!Ref DynamoDBTableWriteCapacityUnits,0]
-      Tags:
-        - Key: customer
-          Value: vft
-        - Key: supplier
-          Value: vft
+      Tags: 
+        - Key: user
+          Value: coderman
         - Key: project
-          Value: research  
+          Value: research 
 
       AttributeDefinitions:
         - AttributeName: "partitionKey"
