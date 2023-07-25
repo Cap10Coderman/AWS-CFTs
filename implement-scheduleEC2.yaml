@@ -1,0 +1,86 @@
+
+Description: This Cloudformation template creates an IAM Policy, an IAM Role for scheduling the start stop of EC2.
+
+Parameters:
+
+  InstanceID:
+    Description: ID of Instance
+    Type: String
+    Default: i-00a38ccad1bbf67ed #pass the istance id to schedule
+
+  CronExpression:
+    Description: Cron expression for Scheduling
+    Type: String
+    Default: cron(0 9 * * ? *)
+
+Resources:
+
+  AssumeRoleForLambda:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: AccessForEC2andEventBridgePolicy
+          PolicyDocument: 
+            Version: "2012-10-17"
+            Statement:
+
+              - Effect: "Allow"
+                Action: 
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "arn:aws:logs:*:*:*"
+
+              - Effect: "Allow"
+                Action: 
+                  - "ec2:Start*"
+                  - "ec2:Stop*"
+                Resource: "*"
+      Tags: 
+        - Key: user
+          Value: coderman
+        - Key: project
+          Value: research 
+
+
+  LambdaFunctionForEc2Start:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: "Lambda function for EC2 Start"
+      Role: !GetAtt AssumeRoleForLambda.Arn
+      Runtime: "python3.9"
+      Handler: index.lambda_handler
+      Code:
+        ZipFile: |
+          import os
+          import boto3
+          region = 'ap-south-1'
+          instances = ['i-00a38ccad1bbf67ed']
+          ec2 = boto3.client('ec2', region_name=region)
+          def lambda_handler(event, context):
+              ec2.start_instances(InstanceIds=instances)
+              print('started your instances: ' + str(instances))
+      Tags: 
+        - Key: user
+          Value: coderman
+        - Key: project
+          Value: research 
+
+  EventsRuleForScheduleEC2:
+    Type: AWS::Events::Rule
+    Properties:
+      Description:  "Rule for schedule EC2 to start"
+      ScheduleExpression: !Ref CronExpression
+      EventPattern:
+        source:
+          - aws.ec2
+      Targets: 
+        - Arn: !GetAtt LambdaFunctionForEc2Start.Arn
+          Id: "ec2Start"
