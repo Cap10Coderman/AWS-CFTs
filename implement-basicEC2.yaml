@@ -52,8 +52,6 @@ Resources:
               Value: InstanceA
             - Key: user
               Value: coderman
-            - Key: project
-              Value: research  
         SubnetId: !Ref SubnetId
         ImageId: !Ref InstanceImageId
         InstanceType: !Ref InstanceType 
@@ -79,8 +77,6 @@ Resources:
           Value: Instance DataVolume
         - Key: user
           Value: coderman
-        - Key: project
-          Value: research
 
   InstanceDataVolumeAttachment:
     Type: AWS::EC2::VolumeAttachment
