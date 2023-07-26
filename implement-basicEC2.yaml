@@ -1,0 +1,90 @@
+Description: This template creates Linux instances
+
+Parameters:
+
+  InstanceImageId:
+    Description: AMI ID for Instance
+    Type: String
+    Default: #add ami id
+
+  InstanceType:
+    Description: Instance type for Instance
+    Type: String
+    Default: #add instance type
+
+  SubnetId:
+    Description: Subnet ID for Instance
+    Type: String
+    Default: #add subnet Id
+
+  # SecurityGroupIds:
+  #   Description: Security Group ID for Instance
+  #   Type: String
+  #   Default: 
+
+  InstanceDataVolumeSize:
+    Description: Data volume size for Instance
+    Type: String
+    Default: #add volume size for data volume
+
+  InstanceDataVolumeType:
+    Description: Data volume type for Instance
+    Type: String
+    Default: #add data volume type
+
+  InstanceRootVolumeSize:
+    Description: Root volume size for Instance
+    Type: String
+    Default: #add volume size for root volume
+
+  InstanceRootVolumeType:
+    Description: Root volume type for Instance
+    Type: String
+    Default: #add root volume type 
+
+Resources:
+
+  InstanceA:
+      Type: AWS::EC2::Instance
+      Properties:
+        Tags:
+            - Key: Name
+              Value: InstanceA
+            - Key: user
+              Value: coderman
+            - Key: project
+              Value: research  
+        SubnetId: !Ref SubnetId
+        ImageId: !Ref InstanceImageId
+        InstanceType: !Ref InstanceType 
+        # SecurityGroupIds: 
+        #   - !Ref SecurityGroupIds
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeSize: !Ref InstanceRootVolumeSize
+              VolumeType: !Ref InstanceRootVolumeType
+              DeleteOnTermination: true
+              Encrypted: true
+
+  InstanceDataVolume:
+    Type: AWS::EC2::Volume
+    Properties:
+      Size: !Ref InstanceDataVolumeSize
+      Encrypted: true
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      VolumeType: !Ref InstanceDataVolumeType
+      Tags:
+        - Key: Name
+          Value: Instance DataVolume
+        - Key: user
+          Value: coderman
+        - Key: project
+          Value: research
+
+  InstanceDataVolumeAttachment:
+    Type: AWS::EC2::VolumeAttachment
+    Properties:
+      InstanceId: !Ref  InstanceA
+      VolumeId: !Ref InstanceDataVolume
+      Device: /dev/sdb
