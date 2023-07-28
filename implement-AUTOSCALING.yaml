@@ -1,0 +1,125 @@
+Description: THis template creates a launch template and an auto scaling group.
+
+Parameters:
+
+  EbsVolumeSize:
+    Description: EBS Volume Size
+    Type: String
+    Default: 8
+  EbsVolumeType:
+    Description: EBS Volume Type
+    Type: String
+    Default: gp3
+  AMI:
+    Description: Image Id for the instance
+    Type: String
+    Default: ami-079b5e5b3971bd10d #Change it to latest AMI ID
+  InstanceType:
+    Description: EC2 Instance Type
+    Type: String
+    Default: t3.nano
+  VPCZoneIdentifierSubnetId:
+    Description: Subnet Id 
+    Type: String
+    Default: subnet-0cb46bb6df1278145
+  AutoScalingMinimumCapacity:
+    Description: Minimum capacity of EC2 Instance 
+    Type: String
+    Default: 1
+  AutoScalingMaximumCapacity:
+    Description: Maximum capacity of EC2 Instance 
+    Type: String
+    Default: 2
+  AutoScalingDesiredCapacity:
+    Description: Desired capacity of EC2 Instance 
+    Type: String
+    Default: 1
+  CpuUtilizationTargetValue:
+    Description: Target Value
+    Type: String
+    Default: 75
+
+Resources:
+
+  EC2LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties: 
+      LaunchTemplateData: 
+        BlockDeviceMappings: 
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeSize: !Ref EbsVolumeSize
+              VolumeType: !Ref EbsVolumeType
+              Encrypted: true
+              DeleteOnTermination: true
+        ImageId: !Ref AMI
+        InstanceType: !Ref InstanceType
+        TagSpecifications: 
+          - ResourceType: volume
+            Tags:
+              - Key: user
+                Value: coderman
+              - Key: project
+                Value: research
+          - ResourceType: instance
+            Tags:
+              - Key: user
+                Value: coderman
+              - Key: project
+                Value: research
+
+      TagSpecifications: 
+        - ResourceType: launch-template
+          Tags:
+            - Key: user
+              Value: coderman
+            - Key: project
+              Value: research
+
+  EC2InstanceAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      MinSize: !Ref AutoScalingMinimumCapacity
+      MaxSize: !Ref AutoScalingMaximumCapacity
+      DesiredCapacity: !Ref AutoScalingDesiredCapacity
+      VPCZoneIdentifier:
+        - !Ref VPCZoneIdentifierSubnetId
+      LaunchTemplate: 
+          LaunchTemplateId: !Ref EC2LaunchTemplate
+          Version: !GetAtt EC2LaunchTemplate.LatestVersionNumber
+      Tags:
+        - Key: Name
+          PropagateAtLaunch: true
+          Value: AutoScale-Ec2Instance
+        - Key: user
+          PropagateAtLaunch: true
+          Value: coderman
+        - Key: project
+          PropagateAtLaunch: true
+          Value: research
+
+  EC2InstancePolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref EC2InstanceAutoScalingGroup
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: !Ref CpuUtilizationTargetValue
+
+
+Outputs:
+
+  EC2LaunchTemplateID:
+    Description: Launch Template ID 
+    Value: !Ref EC2LaunchTemplate
+    Export:
+      Name: !Sub "${AWS::StackName}-EC2LaunchTemplateID"
+
+  AutoscalingGroup:
+    Description: The auto scaling group
+    Value:
+      Ref: EC2InstanceAutoScalingGroup
+
+        
