@@ -1,0 +1,85 @@
+
+Description: This template setup a budget in the account which the stack is created.
+
+Parameters:
+  BudgetLimit: 
+    Type: String
+    Description: Budget Limit for the month
+    Default: 900
+  BudgetUnit: 
+    Type: String
+    Description: Budget Limit for the month
+    Default: USD
+  FirstBudgetThresholdPercentage:
+    Description: The first threshold at which you'll receive a notification
+    Type: Number
+    Default: 50
+  SecondBudgetThresholdPercentage:
+    Description: The second threshold at which you'll receive a notification
+    Type: Number
+    Default: 75
+  ThirdBudgetThresholdPercentage:
+    Description: The third threshold at which you'll receive a notification
+    Type: Number
+    Default: 99
+  Subsciber1EmailId:
+    Type: String
+    Description: Subsciber 1 Email ID
+    Default: coderman1@gmail.com
+  Subsciber2EmailId:
+    Type: String
+    Description: Subsciber 2 Email ID
+    Default: coderman2@gmail.com
+
+Resources:
+  MonthlyBudget:
+    Type: AWS::Budgets::Budget
+    Properties: 
+      Budget: 
+        BudgetLimit:
+          Amount: !Ref BudgetLimit
+          Unit: !Ref BudgetUnit
+        TimeUnit: MONTHLY
+        BudgetType: COST
+        CostTypes:
+          IncludeCredit: false
+          IncludeDiscount: false
+          IncludeRefund: false
+      NotificationsWithSubscribers: 
+
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: !Ref FirstBudgetThresholdPercentage
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref Subsciber1EmailId
+            - SubscriptionType: EMAIL
+              Address: !Ref Subsciber2EmailId
+
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: !Ref SecondBudgetThresholdPercentage
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref Subsciber1EmailId
+            - SubscriptionType: EMAIL
+              Address: !Ref Subsciber2EmailId
+
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold:  !Ref ThirdBudgetThresholdPercentage
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref Subsciber1EmailId
+            - SubscriptionType: EMAIL
+              Address: !Ref Subsciber2EmailId
+
+Outputs:
+  BudgetId:
+    Value: !Ref MonthlyBudget
