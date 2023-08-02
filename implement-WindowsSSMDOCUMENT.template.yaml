@@ -1,0 +1,180 @@
+Description: This is the cloudformation that creates a Windows Instance and an SSM document for Windows.
+
+Parameters:
+  
+  WindowsInstanceAMI:
+    Description: Windows Instance AMI
+    Type: String
+    Default: <ami-id>
+
+  WindowsInstanceType:
+    Description: WindowsInstance Type
+    Type: String
+    Default: t3.small
+
+  RootVolumeSize:
+    Description: RootVolumeSize
+    Type: String
+    Default: 30
+
+  SubnetID:
+    Description: Subnet Id
+    Type: String
+    Default: <subnetId>
+
+  SecurityGroupId:
+    Description: Security Group Id
+    Type: String
+    Default: <sg-Id>
+
+  Url:
+    Description: Url for the downloading file
+    Type: String
+    Default: <url>
+
+  DefaultInstaller:
+    Description: Default Installer
+    Type: String
+    Default: <installer>
+
+  PlatformURL:
+    Default: <platform URL>
+    Description: Platform URL
+    Type: String
+
+  ActivationId:
+    Default: <ActivationId>
+    Description: Activation Id for Qualys
+    Type: String
+
+  CustomerId:
+    Default: <CustomerId>
+    Description: Customer Id for Qualys
+    Type: String
+
+
+Resources:
+
+  SSMDocumentForWindows:
+    Type: AWS::SSM::Document
+    Properties: 
+      DocumentType: Command
+      Content:
+        schemaVersion: "2.2"
+        description: "Run a powershell script "
+        parameters:
+
+          url:
+            default: !Ref Url
+            description: Url for the downloading file
+            type: String
+
+          defaultInstaller:
+            default: !Ref DefaultInstaller 
+            description: Default Installer
+            type: String
+
+          platformUrl:
+            default: !Ref PlatformURL
+            description: Default Installer
+            type: String
+
+          activationId:
+            default: !Ref ActivationId
+            description: Activation Id
+            type: String
+
+          customerId:
+            default: !Ref CustomerId
+            description: Customer Id
+            type: String
+
+
+        mainSteps:
+          - precondition:
+              StringEquals:
+                - platformType
+                - Windows
+            action: aws:runPowerShellScript
+            name: PowerShellScriptToInstall
+            inputs:
+              timeoutSeconds: 170
+              runCommand:
+                - !Sub |
+                    
+                    $Path = $env:TEMP;
+                    $Installer = "chrome_installer.exe";
+                    Invoke-WebRequest "http://dl.google.com/chrome/install/375.126/chrome_installer.exe" -OutFile     $Path\$Installer; 
+                    Start-Process -FilePath $Path\$Installer -ArgumentList "/silent /install" -Verb RunAs -Wait;
+                    Remove-Item $Path\$Installer
+
+                    $DownloadPath = $env:TEMP;
+                    Invoke-WebRequest {{url}} -OutFile $DownloadPath\{{defaultInstaller}}; 
+                    Set-Location $DownloadPath
+                    Msiexec.exe /qn /i CloudAgent_x64.msi CustomerId="{{{customerId}}}" ActivationId="{{{activationId}}}" WebServiceUri="{{platformUrl}}"
+                    
+      Tags: 
+        - Key: user
+          Value:  coderman
+        - Key: project
+          Value: research
+
+
+  SSMWindowsRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          -
+            Effect: "Allow"
+            Principal: 
+              Service: 
+                  - "ec2.amazonaws.com"
+            Action: 
+                - "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  SSMInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: /
+      Roles:
+        - !Ref SSMWindowsRole
+        
+  WindowsInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref WindowsInstanceAMI
+      InstanceType: !Ref WindowsInstanceType
+      SubnetId: !Ref SubnetID
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: !Ref RootVolumeSize
+            VolumeType: gp3
+            DeleteOnTermination: true
+      IamInstanceProfile: !Ref SSMInstanceProfile
+      SecurityGroupIds: 
+        - !Ref SecurityGroupId
+      Tags: 
+        - Key: Name
+          Value: Windows Instance
+        - Key: supplier
+          Value:  coderman
+        - Key: project
+          Value: research
+
+      KeyName: windows_key
+
+  SpecificInstanceIdAssociation:  # associate ssm document to instance
+    Type: AWS::SSM::Association
+    # DependsOn: SSMDocumentForWindows
+    Properties:
+      Name: !Ref SSMDocumentForWindows
+      Targets:
+      - Key: InstanceIds
+        Values:
+        - !Ref WindowsInstance
