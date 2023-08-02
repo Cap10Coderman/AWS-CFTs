@@ -162,7 +162,7 @@ Resources:
       Tags: 
         - Key: Name
           Value: Windows Instance
-        - Key: supplier
+        - Key: user
           Value:  coderman
         - Key: project
           Value: research
