@@ -1,17 +1,21 @@
-
-Description: This Cloudformation template creates an IAM Policy, an IAM Role for scheduling the start stop of EC2.
+Description: This Cloudformation template creates a Lambda and its permission for Scheduling EC2 and an EventBridge rule with cron Expression. 
 
 Parameters:
 
   InstanceID:
     Description: ID of Instance
     Type: String
-    Default: i-00a38ccad1bbf67ed #pass the istance id to schedule
+    Default: i-0cc3111a5b36b85de
 
-  CronExpression:
+  CronExpressionStart:
     Description: Cron expression for Scheduling
     Type: String
-    Default: cron(0 9 * * ? *)
+    Default: cron(30 12 * * ? *) # Add Cron Expression for Start.
+
+  CronExpressionStop:
+    Description: Cron expression for Scheduling
+    Type: String
+    Default: cron(40 12 * * ? *) # Add Cron Expression for Stop.
 
 Resources:
 
@@ -21,7 +25,7 @@ Resources:
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Effect: "Allow"
+          - Effect: "Allow"     
             Principal:
               Service: "lambda.amazonaws.com"
             Action: "sts:AssumeRole"
@@ -43,12 +47,13 @@ Resources:
                   - "ec2:Start*"
                   - "ec2:Stop*"
                 Resource: "*"
-      Tags: 
-        - Key: user
-          Value: coderman
-        - Key: project
-          Value: research 
+      Tags:
+        - Key: "project"
+          Value: "research"
+        - Key: "user"
+          Value: "coderman"
 
+# ------ Lambda Function to Start EC2
 
   LambdaFunctionForEc2Start:
     Type: AWS::Lambda::Function
@@ -57,30 +62,92 @@ Resources:
       Role: !GetAtt AssumeRoleForLambda.Arn
       Runtime: "python3.9"
       Handler: index.lambda_handler
+      Environment:
+        Variables:
+          Instanceid: !Ref InstanceID
       Code:
         ZipFile: |
           import os
           import boto3
           region = 'ap-south-1'
-          instances = ['i-00a38ccad1bbf67ed']
+          instances = [os.environ['Instanceid']]
           ec2 = boto3.client('ec2', region_name=region)
           def lambda_handler(event, context):
               ec2.start_instances(InstanceIds=instances)
               print('started your instances: ' + str(instances))
-      Tags: 
-        - Key: user
-          Value: coderman
-        - Key: project
-          Value: research 
+      Tags:
+        - Key: "project"
+          Value: "research"
+        - Key: "user"
+          Value: "coderman"
 
-  EventsRuleForScheduleEC2:
+  EventsRuleForScheduleEC2Start:
     Type: AWS::Events::Rule
     Properties:
       Description:  "Rule for schedule EC2 to start"
-      ScheduleExpression: !Ref CronExpression
+      ScheduleExpression: !Ref CronExpressionStart
       EventPattern:
         source:
           - aws.ec2
       Targets: 
         - Arn: !GetAtt LambdaFunctionForEc2Start.Arn
           Id: "ec2Start"
+
+  EventBridgeLambdaPermissionStart:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaFunctionForEc2Start.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt EventsRuleForScheduleEC2Start.Arn
+
+# ------ Lambda Function to Stop EC2
+
+  LambdaFunctionForEc2Stop:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: "Lambda function for EC2 Stop"
+      Role: !GetAtt AssumeRoleForLambda.Arn
+      Runtime: "python3.9"
+      Handler: index.lambda_handler
+      Environment:
+        Variables:
+          Instanceid: !Ref InstanceID
+      Code:
+        ZipFile: |
+          import os
+          import boto3
+          region = 'ap-south-1'
+          instances = [os.environ['Instanceid']]
+          ec2 = boto3.client('ec2', region_name=region)
+          def lambda_handler(event, context):
+              ec2.stop_instances(InstanceIds=instances)
+              print('stopped your instances: ' + str(instances))
+      Tags:
+        - Key: "project"
+          Value: "research"
+        - Key: "user"
+          Value: "coderman"
+
+  EventsRuleForScheduleEC2Stop:
+    Type: AWS::Events::Rule
+    Properties:
+      Description:  "Rule for schedule EC2 to stop"
+      ScheduleExpression: !Ref CronExpressionStop
+      EventPattern:
+        source:
+          - aws.ec2
+      Targets: 
+        - Arn: !GetAtt LambdaFunctionForEc2Stop.Arn
+          Id: "ec2Start"
+
+  EventBridgeLambdaPermissionStop:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaFunctionForEc2Stop.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt EventsRuleForScheduleEC2Stop.Arn
+
+
+
