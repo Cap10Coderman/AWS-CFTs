@@ -1,0 +1,112 @@
+Description: This template creates an S3 Bucket and a KMS key for exporting inspector findings.
+
+Resources:
+
+  ExportBucket:
+    Type: AWS::S3::Bucket
+    Properties: 
+      PublicAccessBlockConfiguration: 
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration: 
+        Status: Enabled 
+      BucketEncryption: 
+        ServerSideEncryptionConfiguration:
+         - BucketKeyEnabled: true
+           ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+      Tags:
+            - Key: user
+              Value: coderman
+            - Key: project
+              Value: research 
+
+  InspectorFindingsExportBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ExportBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Allow Amazon Inspector to add objects to the bucket
+            Effect: Allow
+            Principal:
+              Service: inspector2.amazonaws.com
+            Action:
+              - s3:AbortMultipartUpload
+              - s3:PutObject
+              - s3:PutObjectAcl
+            Resource:
+              - !GetAtt ExportBucket.Arn
+              - !Join ['/', [!GetAtt ExportBucket.Arn, '*']]
+
+          - Sid: Denies all action if SecureTransport is false 
+            Effect: Deny
+            Action:
+              - s3:*
+            Resource:
+              - !GetAtt ExportBucket.Arn
+              - !Join ['/', [!GetAtt ExportBucket.Arn, '*']]
+            Principal:
+              AWS: "*"
+            Condition:
+              Bool:
+                'aws:SecureTransport': false
+
+  InspectorFindingsCMK:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "Customer managed Key for the inspector"
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: key-policy
+        Statement:
+        - Sid: Enable IAM User Permissions
+          Effect: Allow
+          Principal:
+            AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+          Action: kms:*
+          Resource: "*"
+        - Sid: Allow Amazon Inspector to use the key
+          Effect: Allow
+          Principal:
+            Service: inspector2.amazonaws.com
+          Action:
+          - kms:Decrypt
+          - kms:GenerateDataKey*
+          Resource: "*"
+      MultiRegion: false
+      PendingWindowInDays: 7
+      Tags:
+          - Key: user
+            Value: coderman
+          - Key: project
+            Value: research 
+
+  InspectorFindingsCMKAlias:
+    Type: 'AWS::KMS::Alias'
+    Properties:
+      AliasName: !Sub 'alias/${AWS::StackName}-CMK'
+      TargetKeyId: !Ref InspectorFindingsCMK
+
+Outputs:
+
+  ExportBucketArn:
+    Description: "InspectorFindings ExportBucket Arn"
+    Value: !GetAtt ExportBucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ExportBucketArn"
+
+  InspectorFindingsCMKArn:
+    Description: "Key ARN InspectorFindingsCMK"
+    Value: !GetAtt 'InspectorFindingsCMK.Arn'
+    Export:
+      Name: !Sub '${AWS::StackName}-InspectorFindingsCMKArn'
+
+  InspectorFindingsCMKAlias:
+    Description: "Key Alias for InspectorFindingsCMK"
+    Value: !Ref InspectorFindingsCMKAlias
+    Export:
+      Name: !Sub '${AWS::StackName}-InspectorFindingsCMKAlias'
