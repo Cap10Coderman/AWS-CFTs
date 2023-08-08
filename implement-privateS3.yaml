@@ -1,0 +1,60 @@
+Description: This template creates a bucket policy and a private s3 bucket with AES Encryption and Versioning.
+
+Resources:
+
+  PrivateS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties: 
+      PublicAccessBlockConfiguration: #Blocking all public access
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration: #Enabling Versioning
+        Status: Enabled 
+      BucketEncryption: #Encrypt using AES by S3
+        ServerSideEncryptionConfiguration:
+         - BucketKeyEnabled: true
+           ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+      LifecycleConfiguration: #Lifecycle 
+        Rules:
+          - Id: rule1
+            Status: Enabled
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 30
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+            ExpirationInDays: 180
+      Tags:  
+        - Key: user
+          Value: coderman
+        - Key: project
+          Value: research
+
+  PrivateS3BucketBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref PrivateS3Bucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Deny
+            Action:
+              - s3:*
+            Resource:
+              - !GetAtt PrivateS3Bucket.Arn
+              - !Join ['/', [!GetAtt PrivateS3Bucket.Arn, '*']]
+            Principal:
+              AWS: "*"
+            Condition:
+              Bool:
+                'aws:SecureTransport': false
+                
+Outputs:
+  PrivateS3BucketArn:
+    Description: PrivateS3Bucket Arn
+    Value: !GetAtt PrivateS3Bucket.Arn
+    Export:
+      Name: !Join ['-', [!Ref 'AWS::StackName', 'PrivateS3BucketArn']]
+
