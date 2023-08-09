@@ -1,0 +1,246 @@
+Description: This templates creates a VPC with two subnets and attaches a pair of ipv4 and ipv6 address
+
+Parameters:
+
+  VpcIpv4Cidr:
+    Description: VPC CidrBlock Range
+    Type: String
+    Default: 10.193.0.0/24
+
+  Subnet1Ipv4Cidr:
+    Description: Subnet1 Ipv4 Cidr Range
+    Type: String
+    Default: 10.193.0.64/26
+
+  Subnet2Ipv4Cidr:
+    Description: Subnet2 Ipv4 Cidr Range
+    Type: String
+    Default: 10.193.0.128/26
+
+  # Subnet3Ipv4Cidr:
+  #   Description: Subnet2 Ipv4 Cidr Range
+  #   Type: String
+  #   Default: 10.193.0.192/26
+
+Resources:
+
+  testVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcIpv4Cidr
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+        - Key: Name
+          Value: TEST-VPC
+        - Key: user
+          Value: coderman
+        - Key: project
+          Value: research
+
+  VPCCidrBlockForIpv6:
+    Type: AWS::EC2::VPCCidrBlock
+    Properties: 
+      AmazonProvidedIpv6CidrBlock: true
+      VpcId: !Ref testVpc
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: user
+          Value: coderman
+        - Key: project
+          Value: research
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref testVpc
+      InternetGatewayId: !Ref InternetGateway
+
+  Subnet1:
+    Type: AWS::EC2::Subnet
+    DependsOn: VPCCidrBlockForIpv6
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Ref Subnet1Ipv4Cidr
+      Ipv6CidrBlock: !Select [ 0, !Cidr [ !Select [ 0, !GetAtt testVpc.Ipv6CidrBlocks], 10, 64 ]]
+      VpcId: !Ref testVpc
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: Subnet1
+        - Key: user
+          Value: coderman
+        - Key: project
+          Value: research
+
+  Subnet1RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref testVpc
+      Tags:
+        - Key: Name
+          Value: Subnet1RouteTable
+        - Key: user
+          Value: coderman
+        - Key: project
+          Value: research
+
+  Subnet1Route:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref Subnet1RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  Subnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Subnet1
+      RouteTableId: !Ref Subnet1RouteTable
+    
+  Subnet2:
+    Type: AWS::EC2::Subnet
+    DependsOn: VPCCidrBlockForIpv6
+    Properties:
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: !Ref Subnet2Ipv4Cidr
+      Ipv6CidrBlock: !Select [ 1, !Cidr [ !Select [ 0, !GetAtt testVpc.Ipv6CidrBlocks], 10, 64 ]]
+      VpcId: !Ref testVpc
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: Subnet2
+        - Key: user
+          Value: coderman
+        - Key: project
+          Value: research
+
+  Subnet2RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref testVpc
+      Tags:
+        - Key: Name
+          Value: Subnet2RouteTable
+        - Key: user
+          Value: coderman
+        - Key: project
+          Value: research
+
+  Subnet2Route:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref Subnet2RouteTable
+      DestinationCidrBlock: 0.0.0.0/0 
+      GatewayId: !Ref InternetGateway
+
+  Subnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Subnet2
+      RouteTableId: !Ref Subnet2RouteTable
+
+  # Subnet3:
+  #   Type: AWS::EC2::Subnet
+  #   # DependsOn: VPCCidrBlockForIpv6
+  #   Properties:
+  #     AvailabilityZone: !Select [1, !GetAZs ""]
+  #     CidrBlock: !Ref Subnet3Ipv4Cidr
+  #     Ipv6CidrBlock: !Select [ 3, !Cidr [ !Select [ 0, !GetAtt testVpc.Ipv6CidrBlocks], 10, 64 ]]
+  #     VpcId: !Ref testVpc
+  #     MapPublicIpOnLaunch: false
+  #     Tags:
+  #       - Key: Name
+  #         Value: Subnet3
+  #       - Key: customer
+  #         Value: coderman
+  #       - Key: project
+  #         Value: research
+
+  # Subnet3RouteTable:
+  #   Type: AWS::EC2::RouteTable
+  #   Properties:
+  #     VpcId: !Ref testVpc
+  #     Tags:
+  #       - Key: Name
+  #         Value: Subnet3RouteTable
+  #       - Key: customer
+  #         Value: coderman
+  #       - Key: project
+  #         Value: research
+
+  # Subnet2Route:
+  #   Type: AWS::EC2::Route
+  #   Properties:
+  #     RouteTableId: !Ref Subnet2RouteTable
+  #     DestinationCidrBlock: 0.0.0.0/0
+  #     GatewayId: !Ref InternetGateway
+
+  # Subnet3DefaultIpv6Route:
+  #   Type: AWS::EC2::Route
+  #   Properties:
+  #     DestinationIpv6CidrBlock: ::/0
+  #     RouteTableId: !Ref Subnet3RouteTable
+  #     EgressOnlyInternetGatewayId: !Ref EgressOnlyInternetGateway
+
+  # Subnet3RouteTableAssociation:
+  #   Type: AWS::EC2::SubnetRouteTableAssociation
+  #   Properties:
+  #     SubnetId: !Ref Subnet3
+  #     RouteTableId: !Ref Subnet3RouteTable
+
+  # LoadBalancerSecurityGroup:
+  #   Type: AWS::EC2::SecurityGroup
+  #   Properties:
+  #     VpcId: !Ref testVpc
+  #     GroupDescription: ELB Security Group. Only static and user IPs. No reference to security group here.
+  #     SecurityGroupIngress:
+  #       - Description: "Allow Inbound traffic from internet via port 443"
+  #         IpProtocol: tcp
+  #         FromPort: 443
+  #         ToPort: 443
+  #         CidrIp: 0.0.0.0/0
+      # SecurityGroupEgress:
+      #   - Description: Restricted egress
+      #     IpProtocol: tcp
+      #     FromPort: 4984
+      #     ToPort: 4984
+      #     CidrIp: !Ref CBSyncGatewaySubnetCidr
+      #   - Description: Restricted egress
+      #     IpProtocol: tcp
+      #     FromPort: 8080
+      #     ToPort: 8080
+      #     CidrIp: !Ref TomcatSubnetCidr
+      # Tags:
+      #   - Key: Name
+      #     Value: LoadBalancerSecurityGroup
+      #   - Key: customer
+      #     Value: coderman
+      #   - Key: project
+      #     Value: research 
+      
+  # LoadBalancer:
+  #   Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+  #   DependsOn: AttachGateway
+  #   Properties:
+  #     IpAddressType: dualstack
+  #     Scheme: internet-facing
+  #     Subnets:
+  #       - !Ref Subnet1
+  #       - !Ref Subnet2
+  #     SecurityGroups:
+  #       - !GetAtt LoadBalancerSecurityGroup.GroupId
+  #     LoadBalancerAttributes:
+  #       - Key: idle_timeout.timeout_seconds
+  #         Value: 600
+  #     Type: application
+  #     Tags:
+  #       - Key: Name
+  #         Value: CCELoadBalancer
+  #       - Key: customer
+  #         Value: coderman
+  #       - Key: project
+  #         Value: research
