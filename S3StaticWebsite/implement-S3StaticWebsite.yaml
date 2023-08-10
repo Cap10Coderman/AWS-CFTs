@@ -1,0 +1,51 @@
+Description: This template creates an s3 bucket enabled with static website hosting.
+
+Resources:
+
+  StaticWebHostingBucket:
+    Type: AWS::S3::Bucket
+    Properties: 
+      AccessControl: PublicRead
+      OwnershipControls:
+        Rules: 
+          - ObjectOwnership: BucketOwnerPreferred
+      WebsiteConfiguration: 
+        ErrorDocument: error.html
+        IndexDocument: index.html
+      Tags: 
+        - Key: user
+          Value: coderman
+        - Key: project
+          Value: research
+
+  StaticWebHostingBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref StaticWebHostingBucket
+      PolicyDocument:
+        Statement:
+          - Action:
+              - 's3:GetObject'
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Resource:
+              - !GetAtt StaticWebHostingBucket.Arn
+              - !Join ['/', [!GetAtt StaticWebHostingBucket.Arn, '*']]
+
+Outputs:
+  StaticWebHostingBucketName:
+    Description: Bucket Name in which the website is hosted..
+    Value: !Ref StaticWebHostingBucket
+
+  StaticWebHostingBucketArn:
+    Description:  Arn of the bucket in which the website is hosted
+    Value: !GetAtt StaticWebHostingBucket.Arn
+    # Export:
+    #   Name: !Join ['-', [!Ref 'AWS::StackName', 'StaticWebHostingBucket']]
+
+  BucketWebsiteEndpoint:
+    Description: Bucket website endpoint URL
+    Value: !GetAtt 
+      - StaticWebHostingBucket
+      - WebsiteURL
