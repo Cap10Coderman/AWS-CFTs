@@ -1,0 +1,55 @@
+Description: This template creates Lambda layers for python libraries such as Numpy, pandas and pytesseract.
+
+Resources:
+
+  PharmapipelineLambdaNumpyLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      Description: Pharmapipeline LambdaFunction NumpyLayer
+      CompatibleArchitectures:
+        - x86_64
+      CompatibleRuntimes:
+        - python3.7
+        - python3.8
+      Content: ./src/lambda/layer/numpy/
+
+  PharmapipelineLambdaPandasLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      Description: Pharmapipeline LambdaFunction Pandas Layer
+      CompatibleArchitectures:
+        - x86_64
+      CompatibleRuntimes:
+        - python3.7
+        - python3.8
+      Content: src/lambda/layer/pandas
+
+  PharmapipelineLambdaTesseractLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      Description: Pharmapipeline LambdaFunction Tesseract Layer
+      CompatibleArchitectures:
+        - x86_64
+      CompatibleRuntimes:
+        - python3.8
+      Content: src/lambda/layer/pytesseract
+
+Outputs:
+
+  PharmapipelineLambdaNumpyLayerArn:
+    Description: PharmapipelineLambdaNumpyLayer Arn
+    Value: !Ref PharmapipelineLambdaNumpyLayer
+    Export:
+      Name: !Join ['-', [!Ref 'AWS::StackName', 'PharmapipelineLambdaNumpyLayerArn']]
+
+  PharmapipelineLambdaPandasLayerArn:
+    Description: PharmapipelineLambdaPandasLayer Arn
+    Value: !Ref PharmapipelineLambdaPandasLayer
+    Export:
+      Name: !Join ['-', [!Ref 'AWS::StackName', 'PharmapipelineLambdaPandasLayerArn']]
+
+  PharmapipelineLambdaTesseractLayerArn:
+    Description: PharmapipelineLambdaTesseractLayer Arn
+    Value: !Ref PharmapipelineLambdaTesseractLayer
+    Export:
+      Name: !Join ['-', [!Ref 'AWS::StackName', 'PharmapipelineLambdaTesseractLayerArn']]
