@@ -2,10 +2,10 @@ Description: This template creates Lambda layers for python libraries such as Nu
 
 Resources:
 
-  PharmapipelineLambdaNumpyLayer:
+  LambdaNumpyLayer:
     Type: AWS::Lambda::LayerVersion
     Properties:
-      Description: Pharmapipeline LambdaFunction NumpyLayer
+      Description: LambdaFunction NumpyLayer
       CompatibleArchitectures:
         - x86_64
       CompatibleRuntimes:
@@ -13,10 +13,10 @@ Resources:
         - python3.8
       Content: ./src/lambda/layer/numpy/
 
-  PharmapipelineLambdaPandasLayer:
+  LambdaPandasLayer:
     Type: AWS::Lambda::LayerVersion
     Properties:
-      Description: Pharmapipeline LambdaFunction Pandas Layer
+      Description: LambdaFunction Pandas Layer
       CompatibleArchitectures:
         - x86_64
       CompatibleRuntimes:
@@ -24,10 +24,10 @@ Resources:
         - python3.8
       Content: src/lambda/layer/pandas
 
-  PharmapipelineLambdaTesseractLayer:
+  LambdaTesseractLayer:
     Type: AWS::Lambda::LayerVersion
     Properties:
-      Description: Pharmapipeline LambdaFunction Tesseract Layer
+      Description: LambdaFunction Tesseract Layer
       CompatibleArchitectures:
         - x86_64
       CompatibleRuntimes:
@@ -36,20 +36,20 @@ Resources:
 
 Outputs:
 
-  PharmapipelineLambdaNumpyLayerArn:
-    Description: PharmapipelineLambdaNumpyLayer Arn
-    Value: !Ref PharmapipelineLambdaNumpyLayer
+  LambdaNumpyLayerArn:
+    Description: LambdaNumpyLayer Arn
+    Value: !Ref LambdaNumpyLayer
     Export:
-      Name: !Join ['-', [!Ref 'AWS::StackName', 'PharmapipelineLambdaNumpyLayerArn']]
+      Name: !Join ['-', [!Ref 'AWS::StackName', 'LambdaNumpyLayerArn']]
 
-  PharmapipelineLambdaPandasLayerArn:
-    Description: PharmapipelineLambdaPandasLayer Arn
-    Value: !Ref PharmapipelineLambdaPandasLayer
+  LambdaPandasLayerArn:
+    Description: LambdaPandasLayer Arn
+    Value: !Ref LambdaPandasLayer
     Export:
-      Name: !Join ['-', [!Ref 'AWS::StackName', 'PharmapipelineLambdaPandasLayerArn']]
+      Name: !Join ['-', [!Ref 'AWS::StackName', 'LambdaPandasLayerArn']]
 
-  PharmapipelineLambdaTesseractLayerArn:
-    Description: PharmapipelineLambdaTesseractLayer Arn
-    Value: !Ref PharmapipelineLambdaTesseractLayer
+  LambdaTesseractLayerArn:
+    Description: LambdaTesseractLayer Arn
+    Value: !Ref LambdaTesseractLayer
     Export:
-      Name: !Join ['-', [!Ref 'AWS::StackName', 'PharmapipelineLambdaTesseractLayerArn']]
+      Name: !Join ['-', [!Ref 'AWS::StackName', 'LambdaTesseractLayerArn']]
