@@ -1,8 +1,7 @@
 
-# S3 Static Website Hosting
+# Lambda layers
 
-You can use Amazon S3 to host a static website. On a static website, individual webpages include static content. They might also contain client-side scripts.
-Amazon S3 website endpoints do not support HTTPS. If you want to use HTTPS, you can use Amazon CloudFront to serve a static website hosted on Amazon S3.
+
 
 
 ## Authors
