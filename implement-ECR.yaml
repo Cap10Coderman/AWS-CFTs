@@ -1,0 +1,32 @@
+Description: This template creates A private repository in ECR.
+
+Parameters:
+
+  ECRRepositoryName:
+    Description: ECR Repository Name
+    Type: String
+    Default: ThePrivateRepository
+
+Resources:
+  PrivateECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Ref ECRRepositoryName
+      ImageScanningConfiguration: 
+          ScanOnPush: true
+      RepositoryPolicyText:
+          Version: "2012-10-17"
+          Statement:
+            - Sid: ECRLambdaPolicy
+              Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - "ecr:BatchGetImage"
+                - "ecr:GetDownloadUrlForLayer"
+      Tags:
+        - Key: user
+          Value: coderman
+        - Key: project
+          Value: research
