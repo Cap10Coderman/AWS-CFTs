@@ -30,7 +30,7 @@ Parameters:
   NatInstanceAMI:
     Description: The AMI for NAT Instance
     Type: String
-    Default: ami-01216e7612243e0ef
+    Default: ami-06f621d90fa29f6d0
 
   NATInstanceType:
     Description: The Instance Type for NAT Instance
@@ -408,17 +408,17 @@ Outputs:
     Export:
       Name: !Sub "${AWS::StackName}-NATInstanceSecurityGroupID"
 
-  WordpressEC2InstanceSecurityGroupID:
-    Description: WordpressEC2InstanceSecurityGroup ID
-    Value: !Ref WordpressEC2InstanceSecurityGroup
-    Export:
-      Name: !Sub "${AWS::StackName}-WordpressEC2InstanceSecurityGroupID"
+  # WordpressEC2InstanceSecurityGroupID:
+  #   Description: WordpressEC2InstanceSecurityGroup ID
+  #   Value: !Ref WordpressEC2InstanceSecurityGroup
+  #   Export:
+  #     Name: !Sub "${AWS::StackName}-WordpressEC2InstanceSecurityGroupID"
 
-  WordpressALBSecurityGroupID:
-    Description: Wordpress ALB SecurityGroup ID
-    Value: !Ref WordpressALBSecurityGroup
-    Export:
-      Name: !Sub "${AWS::StackName}-WordpressALBSecurityGroupID"
+  # WordpressALBSecurityGroupID:
+  #   Description: Wordpress ALB SecurityGroup ID
+  #   Value: !Ref WordpressALBSecurityGroup
+  #   Export:
+  #     Name: !Sub "${AWS::StackName}-WordpressALBSecurityGroupID"
 
   NATPublicSubnet:
     Description: NATPublicSubnet ID
@@ -426,24 +426,24 @@ Outputs:
     Export:
       Name: !Sub "${AWS::StackName}-NATPublicSubnetID"
 
-  WordpressPrivateSubnet:
-    Description: WordPressPrivateSubnet id
-    Value: !Ref WordpressPrivateSubnet
+  PrivateSubnet:
+    Description: PrivateSubnet id
+    Value: !Ref PrivateSubnet
     Export:
       Name: 
-        'Fn::Sub': '${AWS::StackName}-WordpressPrivateSubnetID'
+        'Fn::Sub': '${AWS::StackName}-PrivateSubnetID'
 
-  WordpressPublicSubnet:
-    Description: WordPress PublicSubnet id
-    Value: !Ref WordpressPublicSubnet
+  PublicSubnet1:
+    Description: PublicSubnet 1 id
+    Value: !Ref PublicSubnet1
     Export:
-      Name: !Sub "${AWS::StackName}-WordpressPublicSubnetID"
+      Name: !Sub "${AWS::StackName}-Public1SubnetID"
 
-  PublicSubnet:
-    Description: PublicSubnet id
-    Value: !Ref PublicSubnet
+  PublicSubnet2:
+    Description: PublicSubnet 2 id
+    Value: !Ref PublicSubnet2
     Export:
-      Name: !Sub "${AWS::StackName}-PublicSubnetID"
+      Name: !Sub "${AWS::StackName}-PublicSubnet2ID"
 
   InstanceSSMProfile:
     Description: Instance Role
