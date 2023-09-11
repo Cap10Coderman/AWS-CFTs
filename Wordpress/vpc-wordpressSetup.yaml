@@ -1,0 +1,508 @@
+Description: This Cloudformation template creates a VPC in mumbai region along with three subnets in 2 availability Zones.
+
+Parameters:
+
+  VpcCIDRBlock:
+    Description: The CIDR block for VPC
+    Type: String
+    Default: 10.0.0.0/24
+
+  NATPublicSubnetCIDR:
+    Description: The CIDR block for NAT Public Subnet
+    Type: String
+    Default: 10.0.0.1/28
+
+  WordpressPrivateSubnetCIDR:
+    Description: The CIDR block for WordPress Private Subnet
+    Type: String
+    Default: 10.0.0.16/28
+
+  WordpressPublicSubnetCIDR:
+    Description: The CIDR block for WordPress Public Subnet
+    Type: String
+    Default: 10.0.0.32/28
+
+  PublicSubnetCIDR:
+    Description: The CIDR block for Public Subnet
+    Type: String
+    Default: 10.0.0.48/28
+
+  NatInstanceAMI:
+    Description: The AMI for NAT Instance
+    Type: String
+    Default: ami-02bb7d8191b50f4bb
+
+  NATInstanceType:
+    Description: The Instance Type for NAT Instance
+    Type: String
+    Default: t2.micro
+
+Resources:
+
+  TheVpc:
+    Type: AWS::EC2::VPC
+    Properties: 
+      CidrBlock: !Ref VpcCIDRBlock
+      EnableDnsSupport: true
+      EnableDnsHostnames: true #enabled by default
+      Tags: 
+        - Key: Name
+          Value: TheWordPressVpc
+        - Key: project
+          Value: wordpressonec2
+        - Key: user
+          Value: Unny 
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: customer
+          Value: vft
+        - Key: project
+          Value: wordpressonec2
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref TheVpc
+
+#SSM ROLE FOR INSTANCES
+
+  InstanceSSMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: "Allow"
+            Principal:
+              Service: 
+                  - ec2.amazonaws.com
+            Action:
+                - "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Tags:
+        - Key: project
+          Value: wordpressonec2
+        - Key: user
+          Value: Unny 
+        
+  InstanceSSMProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties: 
+      Path: /
+      Roles:
+      - !Ref InstanceSSMRole
+
+#PUBLIC SUBNET FOR NAT INSTANCE 
+
+  NATPublicSubnet:   
+    Type: AWS::EC2::Subnet
+    Properties: 
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref NATPublicSubnetCIDR
+      Tags: 
+        - Key: Name
+          Value: NATPublicSubnet
+        - Key: project
+          Value: wordpressonec2
+        - Key: user
+          Value: Unny 
+      VpcId: !Ref TheVpc
+
+  NATPublicSubnetRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref TheVpc
+      Tags:
+        - Key: Name
+          Value: NATPublicSubnet
+        - Key: project
+          Value: wordpressonec2
+        - Key: user
+          Value: Unny 
+
+  NATPublicSubnetRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref NATPublicSubnetRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  NATPublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref NATPublicSubnetRouteTable
+      SubnetId: !Ref NATPublicSubnet 
+
+#THE NAT INSTANCE AND ITS SECURITY GROUP
+
+  NATInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: Giving internet access to instances in private subnet
+      GroupName: NATInstanceSecurityGroup
+      VpcId: !Ref TheVpc
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp:  0.0.0.0/0
+
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp:  0.0.0.0/0
+
+        # - IpProtocol: tcp
+        #   FromPort: 22
+        #   ToPort: 22
+        #   CidrIp:  0.0.0.0/0
+      Tags:
+        - Key: project
+          Value: wordpressonec2
+        - Key: user 
+          Value: Unny
+
+  NatInstance:
+    Type: AWS::EC2::Instance
+    DependsOn: InternetGatewayAttachment
+    Properties:  
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: "0"      
+          GroupSet:
+            - !Ref NATInstanceSecurityGroup
+          SubnetId: !Ref NATPublicSubnet
+      IamInstanceProfile: !Ref InstanceSSMProfile
+      ImageId: !Ref NatInstanceAMI
+      InstanceType: !Ref NATInstanceType
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 8
+            VolumeType: "gp3"
+      SourceDestCheck: "false" 
+      UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+
+            sysctl -w net.ipv4.ip_forward=1
+            echo net.ipv4.ip_forward=1 >> /etc/sysctl.d/01-natinstance.conf
+
+            /sbin/iptables -t nat -A POSTROUTING -o `ip addr | grep "^2" | cut -d ":" -f 2` -j MASQUERADE
+            yum install iptables-services -y
+            service iptables save
+            systemctl enable iptables --now
+
+            yum update vim curl -y
+
+      Tags:
+          - Key: Name
+            Value: NATInstance
+          - Key: project
+            Value: wordpressonec2
+          - Key: user
+            Value: Unny
+  
+#PRIVATE SUBNET FOR WORDPRESS SERVER
+
+  WordpressPrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref TheVpc
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref WordpressPrivateSubnetCIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: WordpressPrivateSubnet
+        - Key: project
+          Value: wordpressonec2
+        - Key: user
+          Value: Unny 
+
+  WordpressPrivateSubnetRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref TheVpc
+      Tags: 
+        - Key: Name
+          Value: WordpressPrivateSubnetRouteTable
+        - Key: project
+          Value: wordpressonec2
+        - Key: user
+          Value: Unny 
+
+  WordpressPrivateSubnetRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref WordpressPrivateSubnetRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      InstanceId: !Ref NatInstance 
+
+  WordpressPrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref WordpressPrivateSubnetRouteTable
+      SubnetId: !Ref WordpressPrivateSubnet
+
+# WORDPRESS PUBLIC SUBNET 
+
+  WordpressPublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref TheVpc
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref WordpressPublicSubnetCIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: WordpressPublicSubnet
+        - Key: project
+          Value: wordpressonec2
+        - Key: user
+          Value: Unny 
+
+  WordpressPublicSubnetRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref TheVpc
+      Tags: 
+        - Key: Name
+          Value: WordpressPublicSubnetRouteTable
+        - Key: project
+          Value: wordpressonec2
+        - Key: user
+          Value: Unny 
+
+  WordpressPublicSubnetRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref WordpressPublicSubnetRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  WordpressPublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref WordpressPublicSubnetRouteTable
+      SubnetId: !Ref WordpressPublicSubnet
+
+# PUBLIC SUBNET 
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref TheVpc
+      AvailabilityZone: !Select [ 2, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnetCIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: PublicSubnet
+        - Key: project
+          Value: wordpressonec2
+        - Key: user
+          Value: Unny 
+
+  PublicSubnetRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref TheVpc
+      Tags: 
+        - Key: Name
+          Value: PublicSubnetRouteTable
+        - Key: project
+          Value: wordpressonec2
+        - Key: user
+          Value: Unny 
+
+  PublicSubnetRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicSubnetRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicSubnetRouteTable
+      SubnetId: !Ref PublicSubnet
+
+
+#WORDPRESS SERVER SECURITY GROUP
+
+  WordpressALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: The Application Load Balancer Security group for WordPress Server
+      GroupName: WordpressALBSecurityGroup
+      VpcId: !Ref TheVpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp:  0.0.0.0/0
+
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp:  0.0.0.0/0
+      Tags:
+        - Key: project
+          Value: wordpressonec2
+        - Key: user 
+          Value: Unny
+
+  WordpressEC2InstanceSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupName: WordpressEC2InstanceSecurityGroup
+        GroupDescription: Security group allows the access to the Wordpress Instance
+        VpcId: !Ref TheVpc
+        SecurityGroupEgress:
+          - IpProtocol: tcp
+            FromPort: 80
+            ToPort: 80
+            SourceSecurityGroupId: !Ref NATInstanceSecurityGroup
+
+          - IpProtocol: tcp
+            FromPort: 443
+            ToPort: 443
+            SourceSecurityGroupId: !Ref NATInstanceSecurityGroup
+
+          - IpProtocol: tcp
+            FromPort: 22
+            ToPort: 22
+            SourceSecurityGroupId: !Ref NATInstanceSecurityGroup
+        Tags:
+          - Key: Name
+            Value: WordpressEC2InstanceSecurityGroup
+          - Key: user
+            Value: Unny
+          - Key: project
+            Value: wordpressonec2
+
+
+  NATInstanceIngressGroupRule80:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref NATInstanceSecurityGroup
+      Description: Ingress rule that allows Wordpress instance to reach NAT instances on http
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref WordpressEC2InstanceSecurityGroup
+
+  NATInstanceIngressGroupRule443:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref NATInstanceSecurityGroup
+      Description: Ingress rule that allows Wordpress instance to reach NAT instances on https
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      SourceSecurityGroupId: !Ref WordpressEC2InstanceSecurityGroup
+
+  NATInstanceIngressGroupRule22:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref NATInstanceSecurityGroup
+      Description: Ingress rule that allows Wordpress instance to reach NAT instances on https
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      SourceSecurityGroupId: !Ref WordpressEC2InstanceSecurityGroup
+
+
+  WordpressInstanceIngressGroupRule80:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref WordpressEC2InstanceSecurityGroup
+      Description: Ingress rule that allows ALB to reach Wordpress instances on http
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref WordpressALBSecurityGroup
+
+  WordpressInstanceEgressGroupRule80:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref WordpressEC2InstanceSecurityGroup
+      Description: Ingress rule that allows ALB to reach Wordpress instances on http
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      DestinationSecurityGroupId: !Ref WordpressALBSecurityGroup
+
+Outputs:
+
+  TheVpc:
+    Description: Id of the VPC created for Wordpress
+    Value: !Ref TheVpc
+    Export:
+      Name: !Sub "${AWS::StackName}-TheVpcID"
+
+  NATInstance:
+    Description: NAT Instance id
+    Value: !Ref NatInstance
+    Export:
+      Name: !Sub "${AWS::StackName}-NATInstanceID"
+
+  NATInstanceSecurityGroup:
+    Description: NATInstanceSecurityGroup ID
+    Value: !Ref NATInstanceSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-NATInstanceSecurityGroupID"
+
+  WordpressEC2InstanceSecurityGroupID:
+    Description: WordpressEC2InstanceSecurityGroup ID
+    Value: !Ref WordpressEC2InstanceSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-WordpressEC2InstanceSecurityGroupID"
+
+  WordpressALBSecurityGroupID:
+    Description: Wordpress ALB SecurityGroup ID
+    Value: !Ref WordpressALBSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-WordpressALBSecurityGroupID"
+
+  NATPublicSubnet:
+    Description: NATPublicSubnet ID
+    Value: !Ref NATPublicSubnet
+    Export:
+      Name: !Sub "${AWS::StackName}-NATPublicSubnetID"
+
+  WordpressPrivateSubnet:
+    Description: WordPressPrivateSubnet id
+    Value: !Ref WordpressPrivateSubnet
+    Export:
+      Name: 
+        'Fn::Sub': '${AWS::StackName}-WordpressPrivateSubnetID'
+
+  WordpressPublicSubnet:
+    Description: WordPress PublicSubnet id
+    Value: !Ref WordpressPublicSubnet
+    Export:
+      Name: !Sub "${AWS::StackName}-WordpressPublicSubnetID"
+
+  PublicSubnet:
+    Description: PublicSubnet id
+    Value: !Ref PublicSubnet
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicSubnetID"
+
+  InstanceSSMProfile:
+    Description: Instance Role
+    Value: !Ref InstanceSSMProfile
+    Export:
+      Name: !Sub "${AWS::StackName}-InstanceSSMProfile"
