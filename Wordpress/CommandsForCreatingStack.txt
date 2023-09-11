@@ -1,0 +1,107 @@
+
+
+
+
+export VPC_TEMPLATE_NAME=Wordpress-Vpc-1 \
+export VPC_TEMPLATE_FILE=vpc-wordpresssetup.yaml \
+export USER_PROFILE=adminUnny \
+export REGION=ap-south-1 \
+export EC2_TEMPLATE_NAME=Wordpress-Ec2-2 \
+export EC2_TEMPLATE_FILE=ec2-wordpresssetup.yaml
+
+
+
+Step 1:
+
+aws cloudformation create-stack \
+--stack-name $VPC_TEMPLATE_NAME \
+--template-body file://$VPC_TEMPLATE_FILE \
+--tags Key=user,Value=unny Key=project,Value=wordpressonec2 \
+--profile $USER_PROFILE \
+--region $REGION \
+--capabilities CAPABILITY_IAM
+
+
+aws cloudformation update-stack \
+--stack-name $VPC_TEMPLATE_NAME \
+--template-body file://$VPC_TEMPLATE_FILE \
+--tags Key=user,Value=unny Key=project,Value=wordpressonec2 \
+--profile $USER_PROFILE \
+--region $REGION \
+--capabilities CAPABILITY_IAM
+
+
+Step 2:
+
+
+aws cloudformation create-stack \
+--stack-name $EC2_TEMPLATE_NAME \
+--template-body file://$EC2_TEMPLATE_FILE \
+--tags Key=user,Value=unny Key=project,Value=wordpressonec2 \
+--profile $USER_PROFILE \
+--region $REGION \
+--capabilities CAPABILITY_IAM
+
+
+aws cloudformation update-stack \
+--stack-name $EC2_TEMPLATE_NAME \
+--template-body file://$EC2_TEMPLATE_FILE \
+--tags Key=user,Value=unny Key=project,Value=wordpressonec2 \
+--profile $USER_PROFILE \
+--region $REGION
+
+
+
+Step 3:
+
+
+aws cloudformation create-stack \
+--stack-name $ALB_TEMPLATE_NAME \
+--template-body file://$ALB_TEMPLATE_FILE \
+--tags Key=user,Value=unny Key=project,Value=wordpressonec2 \
+--profile $USER_PROFILE \
+--region $REGION \
+--capabilities CAPABILITY_IAM
+
+
+
+
+
+
+
+sudo usermod -a -G apache ec2-user
+
+sudo su - ec2-user
+
+sudo chown -R ec2-user:apache /var/www
+
+sudo chmod 2775 /var/www && find /var/www -type d -exec sudo chmod 2775 {} \;
+
+find /var/www -type f -exec sudo chmod 0664 {} \;
+
+
+rm /var/www/html/phpinfo.php
+
+
+
+sudo systemctl start mariadb
+sudo mysql_secure_installation
+
+
+
+mysql -u root -p
+CREATE USER 'wordpress-user'@'localhost' IDENTIFIED BY 'root';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
