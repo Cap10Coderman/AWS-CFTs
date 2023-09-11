@@ -1,0 +1,101 @@
+Description: This Cloudformation template creates an EC2 Instance and installs LAMP Server in it.
+
+Parameters:
+
+  VPCStackName:
+    Description: Remote Desktop VPC stack name
+    Type: String
+    Default: Wordpress-Vpc-1 #Stack name of vpc
+
+  WordPressInstanceAMI:
+    Description: The AMI of Wordpress Instance
+    Type: String
+    Default: ami-02bb7d8191b50f4bb
+
+  WordPressInstancetype:
+    Description: The Instance type of Wordpress Instance
+    Type: String
+    Default: t2.micro
+
+  WordPressInstanceRootVolumeType:
+    Description: The Instance type of Wordpress Instance
+    Type: String
+    Default: gp3
+
+  WordPressInstanceRootVolumeSize:
+    Description: Root Volume size of Wordpress Instance
+    Type: String
+    Default: 8
+
+Resources:
+
+# WORDPRESS SERVER EC2
+
+  WordpressEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref WordPressInstanceAMI
+      AvailabilityZone: ap-south-1a
+      IamInstanceProfile:
+        !ImportValue
+        'Fn::Sub': '${VPCStackName}-InstanceSSMProfile'
+      InstanceType: !Ref WordPressInstancetype
+      SubnetId:
+        !ImportValue
+        'Fn::Sub': '${VPCStackName}-WordpressPrivateSubnetID'
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: !Ref WordPressInstanceRootVolumeSize
+            VolumeType: !Ref WordPressInstanceRootVolumeType
+            DeleteOnTermination: true
+      SecurityGroupIds:
+        - !ImportValue
+          'Fn::Sub': '${VPCStackName}-WordpressEC2InstanceSecurityGroupID'
+
+      # UserData:
+      #   Fn::Base64: !Sub |
+      #     #!/bin/bash
+
+      #     sudo yum update -y
+      #     sudo amazon-linux-extras install -y lamp-mariadb10.2-php7.2 php7.2
+
+      #     sudo yum install -y httpd mariadb-server
+      #     sudo systemctl start httpd
+      #     sudo systemctl enable httpd
+
+      #     sudo usermod -a -G apache ec2-user
+      #     sudo su - ec2-user
+      #     sudo chown -R ec2-user:apache /var/www
+      #     sudo chmod 2775 /var/www && find /var/www -type d -exec sudo chmod 2775 {} \;
+      #     find /var/www -type f -exec sudo chmod 0664 {} \;
+
+      #     sudo echo "<?php phpinfo(); ?>" > /var/www/html/phpinfo.php
+
+      Tags:
+        - Key: Name
+          Value: WordpressEC2Instance
+        - Key: user
+          Value: Unny
+        - Key: project
+          Value: wordpressonec2
+
+  # ElasticIp:
+  #   Type: AWS::EC2::EIP
+  #   # DependsOn: !Ref WordpressEC2Instance
+  #   Properties: 
+  #     InstanceId: !Ref WordpressEC2Instance
+  #     Tags: 
+  #       - Key: user
+  #         Value: Unny
+  #       - Key: project
+  #         Value: wordpressonec2
+        
+Outputs:
+  WordpressEC2InstanceID:
+    Description: WordpressEC2Instance Instance id
+    Value: !Ref WordpressEC2Instance
+    Export:
+      Name: !Sub "${AWS::StackName}-WordpressEC2InstanceID"
+
+
