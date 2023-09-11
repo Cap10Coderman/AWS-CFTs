@@ -1,0 +1,97 @@
+Description: This CloudFormation template creates an Application Load Balancer.
+
+Parameters:
+
+  VPCStackName:
+    Description: VPC stack name
+    Type: String
+    Default: Wordpress-Vpc-1 #Stack name of vpc
+
+  EC2StackName:
+    Description: Wordpress Server EC2 stack name
+    Type: String
+    Default: Wordpress-Ec2-2 #Stack name of ec2
+
+Resources:
+
+  WordpressALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties: 
+      Type: application
+      IpAddressType: ipv4
+      Name: WordPressALB
+      Scheme: internet-facing
+      SecurityGroups: 
+        - !ImportValue
+            'Fn::Sub': '${VPCStackName}-WordpressALBSecurityGroupID'
+      Subnets: 
+        - !ImportValue
+          'Fn::Sub': '${VPCStackName}-WordpressPublicSubnetID'
+        - !ImportValue
+          'Fn::Sub': '${VPCStackName}-PublicSubnetID'
+        - !ImportValue
+          'Fn::Sub': '${VPCStackName}-NATPublicSubnetID'
+      Tags: 
+        - Key: user
+          Value: Unny
+        - Key: project
+          Value: wordpressonec2
+
+  WordpressALBTargetGroup:
+      Type: AWS::ElasticLoadBalancingV2::TargetGroup
+      Properties:
+        HealthCheckIntervalSeconds: 30
+        HealthCheckProtocol: HTTP
+        HealthCheckTimeoutSeconds: 15
+        HealthyThresholdCount: 5
+        Matcher:
+          HttpCode: '200'
+        Port: 80
+        Protocol: HTTP
+        TargetGroupAttributes:
+          - Key: deregistration_delay.timeout_seconds
+            Value: '20'
+        UnhealthyThresholdCount: 3
+        VpcId: vpc-08335d96d2e7ae56e
+          # - !ImportValue
+          #   'Fn::Sub': '${VPCStackName}-TheVpcID'
+        Tags:
+          - Key: user
+            Value: Unny
+          - Key: project
+            Value: wordpressonec2
+
+  # WordpressALBHttpsListener:
+  #   Type: AWS::ElasticLoadBalancingV2::Listener
+  #   Properties:
+  #     DefaultActions:
+  #       - Type: fixed-response
+  #         FixedResponseConfig:
+  #             ContentType: text/plain
+  #             MessageBody: Default listener of wordpress Load Balancer
+  #             StatusCode: 200
+  #     LoadBalancerArn: !Ref WordpressALB
+  #     Port: 443
+  #     Protocol: HTTPS
+
+  WordpressALBHttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: fixed-response
+          FixedResponseConfig:
+              ContentType: text/plain
+              MessageBody: Default listener of wordpress Load Balancer
+              StatusCode: 200
+      LoadBalancerArn: !Ref WordpressALB
+      Port: 80
+      Protocol: HTTP
+
+
+        
+
+
+    
+ 
+
+# Outputs:

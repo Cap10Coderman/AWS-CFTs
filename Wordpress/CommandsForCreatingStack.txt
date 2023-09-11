@@ -8,6 +8,8 @@ export USER_PROFILE=adminUnny \
 export REGION=ap-south-1 \
 export EC2_TEMPLATE_NAME=Wordpress-Ec2-2 \
 export EC2_TEMPLATE_FILE=ec2-wordpresssetup.yaml
+export ALB_TEMPLATE_NAME=Wordpress-ALB-3
+export ALB_TEMPLATE_FILE=Wordpress-ALB-3
 
 
 
