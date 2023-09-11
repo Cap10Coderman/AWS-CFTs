@@ -56,20 +56,20 @@ Resources:
         Fn::Base64: !Sub |
           #!/bin/bash
 
-          sudo yum update -y
-          sudo amazon-linux-extras install -y lamp-mariadb10.2-php7.2 php7.2
+          dnf update -y
+          dnf install -y httpd wget php-fpm php-mysqli php-json php php-devel
+          dnf install mariadb105-server -y
+          systemctl start httpd
+          systemctl enable httpd
 
-          sudo yum install -y httpd mariadb-server
-          sudo systemctl start httpd
-          sudo systemctl enable httpd
+          usermod -a -G apache ec2-user
+          chown -R ec2-user:apache /var/www
+          chmod 2775 /var/www && find /var/www -type d -exec sudo chmod 2775 {} \;
 
-          sudo usermod -a -G apache ec2-user
-          sudo su - ec2-user
-          sudo chown -R ec2-user:apache /var/www
-          sudo chmod 2775 /var/www && find /var/www -type d -exec sudo chmod 2775 {} \;
           find /var/www -type f -exec sudo chmod 0664 {} \;
 
-          sudo echo "<?php phpinfo(); ?>" > /var/www/html/phpinfo.php
+          systemctl start mariadb
+          systemctl enable mariadb
 
       Tags:
         - Key: Name
