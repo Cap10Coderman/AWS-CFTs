@@ -35,7 +35,6 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       ImageId: !Ref WordPressInstanceAMI
-      AvailabilityZone: ap-south-1a
       IamInstanceProfile:
         !ImportValue
         'Fn::Sub': '${VPCStackName}-InstanceSSMProfile'
@@ -53,24 +52,24 @@ Resources:
         - !ImportValue
           'Fn::Sub': '${VPCStackName}-WordpressEC2InstanceSecurityGroupID'
 
-      # UserData:
-      #   Fn::Base64: !Sub |
-      #     #!/bin/bash
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
 
-      #     sudo yum update -y
-      #     sudo amazon-linux-extras install -y lamp-mariadb10.2-php7.2 php7.2
+          sudo yum update -y
+          sudo amazon-linux-extras install -y lamp-mariadb10.2-php7.2 php7.2
 
-      #     sudo yum install -y httpd mariadb-server
-      #     sudo systemctl start httpd
-      #     sudo systemctl enable httpd
+          sudo yum install -y httpd mariadb-server
+          sudo systemctl start httpd
+          sudo systemctl enable httpd
 
-      #     sudo usermod -a -G apache ec2-user
-      #     sudo su - ec2-user
-      #     sudo chown -R ec2-user:apache /var/www
-      #     sudo chmod 2775 /var/www && find /var/www -type d -exec sudo chmod 2775 {} \;
-      #     find /var/www -type f -exec sudo chmod 0664 {} \;
+          sudo usermod -a -G apache ec2-user
+          sudo su - ec2-user
+          sudo chown -R ec2-user:apache /var/www
+          sudo chmod 2775 /var/www && find /var/www -type d -exec sudo chmod 2775 {} \;
+          find /var/www -type f -exec sudo chmod 0664 {} \;
 
-      #     sudo echo "<?php phpinfo(); ?>" > /var/www/html/phpinfo.php
+          sudo echo "<?php phpinfo(); ?>" > /var/www/html/phpinfo.php
 
       Tags:
         - Key: Name

@@ -30,7 +30,7 @@ Parameters:
   NatInstanceAMI:
     Description: The AMI for NAT Instance
     Type: String
-    Default: ami-02bb7d8191b50f4bb
+    Default: ami-0700df939e7249d03
 
   NATInstanceType:
     Description: The Instance Type for NAT Instance
@@ -217,7 +217,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref TheVpc
-      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
       CidrBlock: !Ref WordpressPrivateSubnetCIDR
       MapPublicIpOnLaunch: false
       Tags:
