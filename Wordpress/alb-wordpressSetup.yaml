@@ -48,11 +48,14 @@ Resources:
           HttpCode: '200'
         Port: 80
         Protocol: HTTP
+        TargetType: instance
+        Targets:
+            - Id: i-09d56fa2d6f0ee1ff
         TargetGroupAttributes:
           - Key: deregistration_delay.timeout_seconds
             Value: '20'
         UnhealthyThresholdCount: 3
-        VpcId: vpc-08335d96d2e7ae56e
+        VpcId: vpc-0ae14a248c6fcec56
           # - !ImportValue
           #   'Fn::Sub': '${VPCStackName}-TheVpcID'
         Tags:
