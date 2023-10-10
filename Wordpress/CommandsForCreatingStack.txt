@@ -65,7 +65,12 @@ aws cloudformation create-stack \
 --region $REGION \
 --capabilities CAPABILITY_IAM
 
-
+aws cloudformation update-stack \
+--stack-name $ALB_TEMPLATE_NAME \
+--template-body file://$ALB_TEMPLATE_FILE \
+--tags Key=user,Value=unny Key=project,Value=wordpressonec2 \
+--profile $USER_PROFILE \
+--region $REGION 
 
 
 
