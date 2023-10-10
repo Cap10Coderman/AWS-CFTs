@@ -52,15 +52,15 @@ Resources:
         - !ImportValue
           'Fn::Sub': '${VPCStackName}-WordpressEC2InstanceSecurityGroupID'
 
-      # UserData:
-      #   Fn::Base64: !Sub |
-      #     #!/bin/bash
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
 
-      #     dnf update -y
-      #     dnf install -y httpd wget php-fpm php-mysqli php-json php php-devel
-      #     dnf install mariadb105-server -y
-      #     systemctl start httpd
-      #     systemctl enable httpd
+          dnf update -y
+          dnf install -y httpd wget php-fpm php-mysqli php-json php php-devel
+          dnf install mariadb105-server -y
+          systemctl start httpd
+          systemctl enable httpd
 
       #     usermod -a -G apache ec2-user
       #     chown -R ec2-user:apache /var/www
