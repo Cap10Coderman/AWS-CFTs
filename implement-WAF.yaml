@@ -115,7 +115,20 @@ Resources:
                 HeaderName: X-Forwarded-For
                 FallbackBehavior: MATCH
 
-        - Name: permit-allowed-country
+        - Name: WebACL-GeoCount
+          Action:
+            Count: {}
+          Priority: 2
+          Statement:
+            GeoMatchStatement:
+              CountryCodes: 
+                - IN
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: CWMetricForRegionalWebACLGeoCount
+            SampledRequestsEnabled: true
+
+        - Name: permit-allowed-country #allows country india
           Action:
             Allow: {}
           Priority: 4
