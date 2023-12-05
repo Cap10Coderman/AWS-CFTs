@@ -1,0 +1,58 @@
+
+Parameters:
+
+  S3BucketName:
+    Description: Bucket name where the objects are stored
+    Type: String
+    Default: all-logs-from-ikano-org-central-analysis #Specify the bucket name
+
+Resources:
+
+  PatchComplianceDataSyncGlueServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - glue.amazonaws.com
+          Action:
+            - sts:AssumeRole
+      Path: "/"
+      Policies:
+      - PolicyName: s3Policy
+        PolicyDocument:
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+              Resource: 
+                - !Sub "arn:aws:s3:::${S3BucketName}/ec2-inventoryHE/*"
+
+  PatchComplianceDataSyncQueryDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      DatabaseInput:
+        Name: ikano_patch_compliance_db
+      CatalogId: !Ref AWS::AccountId
+
+  PatchComplianceDataSyncGlueCrawler:
+    DependsOn:
+      - PatchComplianceDataSyncQueryDatabase
+      - PatchComplianceDataSyncGlueServiceRole
+    Type: AWS::Glue::Crawler
+    Properties:
+      Role:
+        Fn::GetAtt: [ PatchComplianceDataSyncGlueServiceRole, Arn ]
+      Description: 'PatchComplianceDataSync S3 Crawler'
+      Schedule:
+        # Run crawler every day at 4:30 am UTC
+        ScheduleExpression: cron(30 4 * * ? *)
+      DatabaseName: { Ref: PatchComplianceDataSyncQueryDatabase }
+      Targets:
+        S3Targets:
+          - Path: !Sub "s3://${S3BucketName}/ec2-inventoryHE/"
