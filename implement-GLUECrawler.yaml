@@ -4,7 +4,7 @@ Parameters:
   S3BucketName:
     Description: Bucket name where the objects are stored
     Type: String
-    Default: all-logs-from-ikano-org-central-analysis #Specify the bucket name
+    Default: #Specify the bucket name
 
 Resources:
 
