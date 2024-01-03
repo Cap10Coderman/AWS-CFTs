@@ -53,7 +53,7 @@ aws cloudformation delete-stack \
 
 
 ## 🚀 About Me
-I'm a Security Engineer and a devoloper...
+I'm a Security Engineer and a developer...
 
 
 ## 🛠 Skills
