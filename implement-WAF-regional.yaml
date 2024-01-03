@@ -1,0 +1,161 @@
+  
+Description: This Cloudformation template creates a REGIONAL WAF with rule to block access from Karnataka State.  
+  
+Resources: 
+  CCERegionalWebACLipv4IPset:
+    Type: AWS::WAFv2::IPSet
+    Properties: 
+      Description: Allow-ipv4-CCEweb
+      IPAddressVersion: IPV4
+      Scope: REGIONAL
+      Addresses: 
+        - 49.37.162.18/32
+      Tags: 
+        - Key: customer
+          Value: concourse
+        - Key: supplier
+          Value: vft
+        - Key: project
+          Value: cce2
+
+ #-- WebAcl for Load Balancer and Appsync
+ 
+  CCERegionalWebACL:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Scope: REGIONAL
+      Description:  REGIONAL Web ACL for CCE External LoadBalancer
+      DefaultAction: 
+        Block: {}
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: CWMetricForCCERegionalWebACL
+      Tags:
+          - Key: customer
+            Value: concourse
+          - Key: supplier
+            Value: vft
+          - Key: project
+            Value: cce
+      Rules: 
+
+        - Name: AWS-AWSManagedRulesAmazonIpReputationList
+          Priority: 0
+          OverrideAction:
+            None: {}
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: CWMetricForRegionalIPReputationList
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesAmazonIpReputationList
+
+        - Name: WebACL-RateBasedRule
+          Priority: 1
+          Action:
+            Block: {}
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: CWMetricForRegionalWebACLRateBasedRule
+            SampledRequestsEnabled: true
+          Statement:
+            RateBasedStatement:
+              AggregateKeyType: IP
+              Limit: 3000
+              ScopeDownStatement: 
+                OrStatement:
+                  Statements:
+                    - NotStatement:
+                        Statement:
+                          SizeConstraintStatement:
+                            ComparisonOperator: GT 
+                            FieldToMatch: 
+                              SingleHeader: 
+                                Name: x-amz-security-token
+                            Size: 150
+                            TextTransformations:
+                            - Priority: 0
+                              Type: NONE    
+                    - NotStatement:
+                        Statement:
+                          SizeConstraintStatement:
+                            ComparisonOperator: GT 
+                            FieldToMatch: 
+                              SingleHeader: 
+                                Name: authorization
+                            Size: 150
+                            TextTransformations:
+                            - Priority: 0
+                              Type: NONE
+                    - NotStatement:
+                        Statement:
+                          ByteMatchStatement:
+                            FieldToMatch: 
+                              UriPath: {}
+                            PositionalConstraint: EXACTLY
+                            SearchString: "/graphql/"
+                            TextTransformations:
+                            - Priority: 0
+                              Type: NONE
+
+        - Name: WebACL-GeoCount
+          Action:
+            Count: {}
+          Priority: 2
+          Statement:
+            GeoMatchStatement:
+              CountryCodes: 
+                - IN
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: CWMetricForRegionalWebACLGeoCount
+            SampledRequestsEnabled: true
+
+        - Name: block-request-IN-KA
+          Action:
+            Block: {}
+          Priority: 3
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            SampledRequestsEnabled: true
+            MetricName: CWMetricForBlockRequestsFromReferer
+          Statement:
+            AndStatement:
+              Statements:
+                - ByteMatchStatement:
+                    FieldToMatch:
+                      SingleHeader:
+                        Name: Referer
+                    PositionalConstraint: EXACTLY
+                    SearchString: "https://cce.concourse.co.in/"
+                    TextTransformations:
+                      - Type: NONE
+                        Priority: 0                                
+                - ByteMatchStatement:
+                    FieldToMatch:
+                      SingleHeader:
+                        Name: Host
+                    PositionalConstraint: EXACTLY
+                    SearchString: "cceapi-prod.concourse.co.in"
+                    TextTransformations:
+                      - Type: NONE
+                        Priority: 0
+                - LabelMatchStatement:
+                    Scope: LABEL
+                    Key: awswaf:clientip:geo:region:IN-KA
+                        
+        - Name: WebACL-GeoRestriction
+          Action:
+            Allow: {}
+          Priority: 4
+          Statement:
+            GeoMatchStatement:
+              CountryCodes: 
+                - IN
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: CWMetricForRegionalWebACLGeoRestriction
+            SampledRequestsEnabled: true
