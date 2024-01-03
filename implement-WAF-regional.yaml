@@ -2,10 +2,10 @@
 Description: This Cloudformation template creates a REGIONAL WAF with rule to block access from Karnataka State.  
   
 Resources: 
-  CCERegionalWebACLipv4IPset:
+  RegionalWebACLipv4IPset:
     Type: AWS::WAFv2::IPSet
     Properties: 
-      Description: Allow-ipv4-CCEweb
+      Description: Allow-ipv4-web
       IPAddressVersion: IPV4
       Scope: REGIONAL
       Addresses: 
@@ -18,11 +18,11 @@ Resources:
 
  #-- WebAcl for Load Balancer and Appsync
  
-  CCERegionalWebACL:
+  RegionalWebACL:
     Type: AWS::WAFv2::WebACL
     Properties:
       Scope: REGIONAL
-      Description:  REGIONAL Web ACL for CCE External LoadBalancer
+      Description:  REGIONAL Web ACL for External LoadBalancer
       DefaultAction: 
         Block: {}
       VisibilityConfig:
