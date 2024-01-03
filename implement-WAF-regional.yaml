@@ -11,12 +11,10 @@ Resources:
       Addresses: 
         - 49.37.162.18/32
       Tags: 
-        - Key: customer
-          Value: concourse
-        - Key: supplier
-          Value: vft
+        - Key: user
+          Value: coderman
         - Key: project
-          Value: cce2
+          Value: research 
 
  #-- WebAcl for Load Balancer and Appsync
  
@@ -32,12 +30,10 @@ Resources:
         CloudWatchMetricsEnabled: true
         MetricName: CWMetricForCCERegionalWebACL
       Tags:
-          - Key: customer
-            Value: concourse
-          - Key: supplier
-            Value: vft
-          - Key: project
-            Value: cce
+        - Key: user
+          Value: coderman
+        - Key: project
+          Value: research 
       Rules: 
 
         - Name: AWS-AWSManagedRulesAmazonIpReputationList
